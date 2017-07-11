@@ -1,0 +1,24 @@
+trigger OppNoteforClosedLost on Opportunity (after update){
+
+    Set<Id> oppid = new Set<Id>();
+
+    for(Opportunity opp: Trigger.new)
+    {
+        if(trigger.oldMap.get(opp.id).Opp_Owner_Changed__c == false && opp.Opp_Owner_Changed__c == true)
+        {
+           oppid.add(opp.id);   
+        }
+    }
+    
+    List<Task> ActivityHisList = [select id ,Whatid,Call_Notes__c from Task where Whatid in: oppid];
+    
+    if(ActivityHisList != null && ActivityHisList.size() > 0)
+    {
+        for(Task ta: ActivityHisList)
+        {
+            ta.Call_Notes__c = null;
+        }
+        
+        Update ActivityHisList;
+    }
+}
