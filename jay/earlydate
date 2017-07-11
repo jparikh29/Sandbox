@@ -1,0 +1,62 @@
+Trigger earlydate on Webinar_Attendance__c(After Insert, After Update, After Delete, After UnDelete){
+    
+    List<Id> accountIds = New List<Id>();
+    
+    If(Trigger.IsInsert || Trigger.IsUpdate || Trigger.IsUnDelete)
+    {
+        For(Webinar_Attendance__c prod : Trigger.New)
+        {
+            If(Prod.Account__c != null)
+            {
+                accountIds.add(Prod.Account__c);
+            }
+        }
+    }
+    If(Trigger.IsDelete)
+    {
+        For(Webinar_Attendance__c Prod : Trigger.Old)
+        {
+            If(Prod.Account__c != null)
+            {
+                accountIds.add(Prod.Account__c);
+            }
+        }
+    }
+    
+    List<Account> accountFinalList = New List<Account>();
+    
+   For(Account act : [Select Id, Webinar_First_Registration_Date__c, Webinar_Latest_Attd_Date__c,
+                                (Select Id, Registration_Date__c FROM Webinar_Registrations__r WHERE Registration_Date__c != null ORDER BY Registration_Date__c DESC)
+                                        FROM Account WHERE Id =:accountIds ])
+    {
+        List<Date> datesPerAccount = New List<Date>();
+        Integer I = 0;
+        For(Webinar_Attendance__c EveryProd : act.Webinar_Registrations__r){
+         //   datesPerAccount.add(EveryProd.Registration_Date__c );
+            system.debug('--------------datetimejay'+datesPerAccount);
+            datetime dt = EveryProd.Registration_Date__c ;
+            date mydate = date.newInstance(dt.year(), dt.month(), dt.day());
+            system.debug ('finalconverteddate'+ mydate);
+            datesPerAccount.add(mydate);
+            system.debug('variablevalue___jay'+datesPerAccount);
+            
+            I += 1;
+        }
+        
+       act.Webinar_Latest_Registration_Date__c = datesPerAccount[0];
+       act.Webinar_First_Registration_Date__c  = datesPerAccount[I - 1];
+        
+        accountFinalList.add(act);
+       
+    }
+    
+    try{
+        If(!accountFinalList.IsEmpty()){
+            update accountFinalList;
+        }
+    }
+    Catch(Exception e){
+        system.debug('Thrown Exception for EarlyLatestDates Trigger Is:: ' + e.getMessage());
+    }
+    
+}
