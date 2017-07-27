@@ -1,0 +1,123 @@
+public class LeadProductHandler
+{
+    public static Boolean RerunTrigger = true;
+    
+    public static void LPProcesHandlermethod(List<Lead_Products__c> LPList, Map<Id, Lead_Products__c> LPOldMap,boolean IsBefore,boolean isafter,boolean isupdate,boolean isinsert,boolean isDelete,boolean isUndelete) 
+    {
+        if(IsBefore && isupdate)
+        {
+            system.debug('--LPOldMap-----'+LPOldMap);
+        
+            List<Opportunity> opplist = new List<Opportunity>();
+            Set<id> LPid = new Set<id>();
+            Map<Id, Integer> OppLeadMap = new Map<Id,Integer>();
+            
+            for(Lead_Products__c lpp:LPList){
+                
+                LPid.add(lpp.id);
+            }
+            System.debug('==LPid=='+LPid);
+            
+            opplist = [select id,Lead_Product__c from Opportunity where Lead_Product__c in:LPid AND StageName = 'Closed Won' ];
+            
+            System.debug('---opplist---'+ opplist);
+            
+            for(Opportunity opp: opplist){
+                Integer count = OppLeadMap.get(opp.Lead_Product__c);
+                
+                System.debug('==count=='+count);
+                System.debug('==OppLeadMap=='+OppLeadMap);
+                
+                if(count == null){
+                    count = 0;
+                }
+                count++;
+                OppLeadMap.put(opp.Lead_Product__c,count);
+                System.debug('==new count=='+count);     
+            }
+            
+            for(Lead_Products__c lpp: LPList){
+            
+                lpp.Total_Closed_Won_Opp__c = OppLeadMap.get(lpp.id);
+                System.debug('==Total_Closed_Won_Opp__c=' + lpp.Total_Closed_Won_Opp__c );
+            }
+        }
+        
+        if(isafter && ( isupdate || isinsert ) && RerunTrigger )
+        {
+            Set<id> AccountId = new Set<id>();
+            for(Lead_Products__c lp: Lplist)
+            {
+                if(lp.account__c != null){
+                    AccountId.add(lp.account__c);
+                    System.debug('==AccountId=='+ AccountId );
+                }
+            }
+            
+            List<Lead_Products__c> recordToUpdate = new List<Lead_Products__c>();
+            
+            for (account act : [select id, (select id, createddate, Latest_Lead_Product__c ,First_Lead_Product__c from Lead_Products__r ORDER BY createddate ASC) from account where id in :AccountId ]) 
+            {
+                System.debug('==act--'+ act);
+                System.debug('==lplist with Account=='+ act.Lead_Products__r);
+                if(act.Lead_Products__r != null && act.Lead_Products__r.size() > 0)
+                {
+                    
+                    Integer childCount = act.Lead_Products__r.size();
+                    /*Lead_Products__c childRecord = new Lead_Products__c();
+           
+                    // Set First Record Flag
+                    childRecord = act.Lead_Products__r[0];
+                    childRecord.First_Lead_Product__c = true;
+                    recordToUpdate.add(childRecord);
+                    System.debug('==childRecord ='+ childRecord );
+                    
+                    
+                    // Set Last Record Flag
+                    if (childCount > 1) {
+                        childRecord = act.Lead_Products__r[childCount - 1];
+                        childRecord.Latest_Lead_Product__c= true;
+                        recordToUpdate.add(childRecord);
+                     system.debug('====childrecordlatest=='+ childRecord);   
+                    }
+                    
+                    Integer Count = childCount -1;
+                    for(Count = Count - 1 ; Count > 1; Count-- )
+                    {
+                        childRecord = act.Lead_Products__r[count];
+                        childRecord.Latest_Lead_Product__c= false;
+                        recordToUpdate.add(childRecord);
+                    }
+                    */
+                    integer count = 0;
+                    
+                    for(Lead_Products__c lp : act.Lead_Products__r)
+                    {
+                        if(count == 0)
+                        {    
+                            lp.First_Lead_Product__c = true;
+                        }
+                        if(count == childCount - 1)
+                        {
+                            lp.Latest_Lead_Product__c= true;
+                        }
+                        if (count > 0 && count < childCount - 1)
+                        {
+                            lp.Latest_Lead_Product__c= false;
+                        }          
+                        recordToUpdate.add(lp);
+                        count++;
+                    }   
+                }
+            }
+         
+            System.debug('==recordToUpdate=='+ recordToUpdate);
+            if (recordToUpdate.size() > 0) 
+            {
+                system.debug('Total Record to Update' + recordToUpdate.size());
+                RerunTrigger = false;
+                update recordToUpdate;
+            }
+        }
+    }
+}
