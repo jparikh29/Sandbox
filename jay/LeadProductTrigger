@@ -1,0 +1,6 @@
+trigger LeadProductTrigger on Lead_Products__c (after insert , after update, before update ) 
+{
+    LeadProductHandler.LPProcesHandlermethod(trigger.new,trigger.oldmap,trigger.isBefore,trigger.isAfter, 
+    trigger.isUpdate,trigger.isInsert, trigger.isDelete, trigger.isUndelete);
+
+}
